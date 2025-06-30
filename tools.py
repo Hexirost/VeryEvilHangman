@@ -1,4 +1,16 @@
-def setToFullLetterMaskIndex(wordSet, usedLetters = set()):
+from copy import deepcopy
+from itertools import chain
+
+ALPHABET = set(chr(x) for x in range(97,123))
+
+def fileToSet(filename):
+    f = open(filename)
+    words = f.read()
+
+    wordSet = set(words.split("\n"))
+    return wordSet
+
+def setToLetterMaskIndex(wordSet, usedLetters = set()):
     res = {}
     wordSet = set(wordSet)
     ''' For every word in set add it to a dictionary with a dictionary full of letters and a dictionary full of mask with a list of valid words with that mask format below
@@ -23,14 +35,18 @@ def setToFullLetterMaskIndex(wordSet, usedLetters = set()):
     return res
 
 def updateGameState(letter,mask,gameState):
+    newGameState = gameState[:]
     if mask == (-1,):
-        return gameState
+        return newGameState
+    for index, blank in enumerate(newGameState):
+        if blank != "_" and index in mask:
+            return False
     for pos in mask:
-        if gameState[pos] == "_":
-            gameState[pos] = letter
+        if newGameState[pos] == "_":
+            newGameState[pos] = letter
         else:
             print("what the hell?")
-    return gameState
+    return newGameState
 
 
 def greedyAlgo(nextGuess, gameState, letterMaskDict):
@@ -49,7 +65,9 @@ def greedyAlgo(nextGuess, gameState, letterMaskDict):
         if chosenMask == (-1,):
             fails+=1
         newGameState = updateGameState(nextGuess, chosenMask, newGameState)
-        letterMaskDict = setToFullLetterMaskIndex(set(chosenList))
+        if newGameState == False:
+            continue
+        letterMaskDict = setToLetterMaskIndex(set(chosenList))
         outer_max_lengths = {
             k: max(len(inner_val) for inner_val in v.values())
             for k, v in letterMaskDict.items()
@@ -59,3 +77,38 @@ def greedyAlgo(nextGuess, gameState, letterMaskDict):
         count += newGameState.count("_")
 
     return count, fails
+
+def veryEvilAlgo(currGuess, gameState, FLMI, attemptedLetters):
+    attempts = []
+    def helperEvilAlgo(currGuess, gameState, FLMI, attemptedLetters):
+        nonlocal attempts
+        attemptedLetters.append(currGuess)
+
+        if currGuess not in FLMI or len(attemptedLetters) == 26:
+            return None
+        blanks = gameState.count("_")
+        if  blanks == 0:
+            attempts.append((attemptedLetters, gameState, len(attemptedLetters) - (4-blanks)))
+            return None
+        elif blanks == 1:
+            possibleWords = set(chain.from_iterable(list(v.values())[0] for v in FLMI.values()))
+            for letters in possibleWords:
+                attempts.append((attemptedLetters, letters, len(possibleWords)-1 + len(attemptedLetters) - (4-blanks))) 
+            return None
+
+        for mask in deepcopy(FLMI)[currGuess].items():
+            maskPos, wordsForMask = mask
+            if len(wordsForMask) == 1:
+                attempts.append((attemptedLetters, wordsForMask, len(attemptedLetters) - (4-blanks)))
+                return None
+            newGameState = updateGameState(currGuess,maskPos,gameState)
+            if newGameState == False:
+                return None
+            newFLMI = setToLetterMaskIndex(wordsForMask)
+            for newLetter in ALPHABET.difference(set(attemptedLetters)):
+                newAttempt = helperEvilAlgo(newLetter, deepcopy(newGameState), deepcopy(newFLMI), deepcopy(attemptedLetters))
+                if newAttempt == None:
+                    continue
+            
+    helperEvilAlgo(currGuess, gameState, FLMI, attemptedLetters)
+    return attempts

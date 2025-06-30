@@ -1,16 +1,9 @@
-import pprint
-import copy
-from tools import setToFullLetterMaskIndex, greedyAlgo
-
-f = open(r"mini.txt")
-words = f.read()
-ALPHABET = set(chr(x) for x in range(97,123))
-
-wordSet = set(words.split("\n"))
-attemptedLetters = set()
+from tools import setToLetterMaskIndex, greedyAlgo, veryEvilAlgo, fileToSet
+wordSet = fileToSet(r"mini.txt")
+attemptedLetters = []
 gameState = ["_"] * 4
+LMI = setToLetterMaskIndex(wordSet, set())
 
-FLMI = setToFullLetterMaskIndex(wordSet, set())
 while True:
     print("Attempted = {}".format(attemptedLetters))
     print("Puzzle: ",end = "")
@@ -20,6 +13,8 @@ while True:
     
     if not userGuess.isalpha() or userGuess.lower() in attemptedLetters:
         print("Invalid guess please try again\n")
+        continue
     userGuess = userGuess.lower()
+    print("Greedy is {}".format(greedyAlgo(userGuess, gameState, LMI)))
+    res = veryEvilAlgo(userGuess, gameState, LMI, attemptedLetters)
 
-    print("Greedy is {}".format(greedyAlgo(userGuess, gameState, FLMI)))
